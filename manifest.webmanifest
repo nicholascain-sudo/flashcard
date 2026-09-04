@@ -1,0 +1,14 @@
+{
+  "name": "Buzzer — Jeopardy drill",
+  "short_name": "Buzzer",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070C24",
+  "theme_color": "#070C24",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

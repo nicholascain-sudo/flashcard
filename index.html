@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#070C24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Buzzer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Buzzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Zilla+Slab:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#070C24;         /* near-black navy, the shell */
+  --board:#16256E;       /* the clue panel */
+  --board-lo:#0E1A52;
+  --gold:#E8B33C;        /* values, accents */
+  --paper:#F3F1E7;       /* clue type */
+  --slate:#7E8AB8;       /* secondary */
+  --miss:#C0483C;
+  --line:rgba(126,138,184,.22);
+  --ui:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --clue:'Zilla Slab',Georgia,serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:var(--ink);color:var(--paper);font-family:var(--ui);
+  display:flex;flex-direction:column;overscroll-behavior:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+/* ---- header ---- */
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.brand{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand span{color:var(--gold)}
+.meter{flex:1;height:3px;background:rgba(126,138,184,.2);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--gold);width:0;transition:width .35s ease}
+.tabs{display:flex;gap:2px}
+.tabs button{padding:6px 10px;font-size:13px;font-weight:500;color:var(--slate);border-radius:6px}
+.tabs button[aria-current="true"]{color:var(--ink);background:var(--gold)}
+
+main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+.view{display:none;flex:1;flex-direction:column}
+.view.on{display:flex}
+
+/* ---- the clue panel: the one loud element ---- */
+.panel{
+  flex:1;margin:14px;border-radius:4px;
+  background:linear-gradient(180deg,var(--board),var(--board-lo));
+  box-shadow:inset 0 0 0 1px rgba(232,179,60,.28), 0 18px 44px -22px #000;
+  display:flex;flex-direction:column;padding:20px;min-height:300px;cursor:pointer;
+}
+.meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}
+.meta .rt{color:var(--slate);letter-spacing:.04em;font-weight:500;flex:0 0 auto}
+.cat{margin-top:2px}
+.clue{
+  flex:1;display:flex;align-items:center;font-family:var(--clue);font-weight:500;
+  font-size:clamp(20px,5.2vw,29px);line-height:1.34;letter-spacing:-.005em;
+  padding:22px 0;text-wrap:balance;
+}
+.hint{font-size:12.5px;color:var(--slate);text-align:center;padding-top:4px}
+
+.resp{border-top:1px solid rgba(232,179,60,.3);padding-top:16px}
+.resp .lbl{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--slate);font-weight:600}
+.resp .val{font-family:var(--clue);font-size:clamp(23px,6.2vw,33px);font-weight:600;color:var(--gold);margin-top:5px;line-height:1.2}
+.warn{margin-top:12px;font-size:13.5px;line-height:1.45;color:#F0C9A0;
+  background:rgba(192,72,60,.16);border-left:2px solid var(--miss);padding:9px 11px;border-radius:0 3px 3px 0}
+
+/* ---- actions ---- */
+.acts{display:flex;gap:10px;padding:0 14px 14px;flex:0 0 auto}
+.acts button{flex:1;padding:17px 12px;border-radius:4px;font-weight:600;font-size:16px;
+  border:1px solid var(--line);transition:transform .09s ease}
+.acts button:active{transform:scale(.975)}
+.got{background:var(--gold);color:var(--ink);border-color:var(--gold)!important}
+.missed{background:transparent;color:var(--miss);border-color:rgba(192,72,60,.55)!important}
+.reveal{background:transparent;color:var(--paper)}
+
+/* ---- stats ---- */
+.pad{padding:18px 16px 30px}
+h2{font-size:15px;font-weight:600;margin:0 0 4px}
+.sub{font-size:13px;color:var(--slate);line-height:1.5;margin:0 0 18px}
+.big{display:flex;gap:26px;margin-bottom:22px;flex-wrap:wrap}
+.big div b{display:block;font-family:var(--clue);font-size:31px;font-weight:600;color:var(--gold);line-height:1.05}
+.big div span{font-size:12px;color:var(--slate)}
+.trow{padding:11px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:4px 12px}
+.trow .nm{font-size:14px;font-weight:500}
+.trow .nm em{font-style:normal;color:var(--gold);font-size:11px;margin-left:5px}
+.trow .pc{font-size:13px;color:var(--slate);font-variant-numeric:tabular-nums}
+.bar{grid-column:1/-1;height:4px;background:rgba(126,138,184,.2);border-radius:2px;overflow:hidden;display:flex}
+.bar i{height:100%;background:var(--gold)}
+.bar u{height:100%;background:var(--miss);opacity:.75}
+.empty{color:var(--slate);font-size:13.5px;line-height:1.55;padding:40px 4px;text-align:center}
+.load{margin:auto;text-align:center;padding:40px 24px}
+.load b{display:block;font-family:var(--clue);font-size:26px;color:var(--gold);margin-bottom:8px}
+.load span{font-size:13.5px;color:var(--slate)}
+.mini{font-size:12.5px;color:var(--slate);padding:14px 16px;border-top:1px solid var(--line);line-height:1.5}
+.mini button{color:var(--miss);text-decoration:underline;font-size:12.5px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Buzz<span>er</span></div>
+  <div class="meter" role="progressbar" aria-label="Session progress"><i id="mtr"></i></div>
+  <nav class="tabs">
+    <button id="tDrill" aria-current="true">Drill</button>
+    <button id="tStats">Topics</button>
+  </nav>
+</header>
+
+<main>
+  <section class="view on" id="vDrill">
+    <div class="load" id="boot"><b>Loading the deck</b><span id="bootMsg">Fetching clues…</span></div>
+    <div class="panel" id="panel" hidden>
+      <div class="meta"><span class="cat" id="cat"></span><span class="rt" id="rt"></span></div>
+      <div class="clue" id="clue"></div>
+      <div class="hint" id="hint">Tap to see the response</div>
+      <div class="resp" id="resp" hidden>
+        <div class="lbl">Correct response</div>
+        <div class="val" id="ans"></div>
+        <div class="warn" id="warn" hidden></div>
+      </div>
+    </div>
+    <div class="acts" id="acts" hidden>
+      <button class="reveal" id="bReveal">Show response</button>
+    </div>
+  </section>
+
+  <section class="view" id="vStats">
+    <div class="pad">
+      <div class="big">
+        <div><b id="sSeen">0</b><span>cards started</span></div>
+        <div><b id="sKnown">0</b><span>known</span></div>
+        <div><b id="sDue">0</b><span>due now</span></div>
+        <div><b id="sAcc">—</b><span>accuracy</span></div>
+      </div>
+      <h2>Coverage by topic</h2>
+      <p class="sub">Gold is what you've answered correctly at least once. Red is started but still missing. Starred topics get extra long-tail cards and jump the queue.</p>
+      <div id="topics"></div>
+    </div>
+    <div class="mini">Progress is stored on this device only. <button id="bReset">Erase all progress</button></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+const STAR = new Set(['Opera','European History','Chemistry','The Bible','Greek & Roman Myth']);
+const DAY = 864e5;
+let DECK = [], ST = new Map(), queue = [], lapses = [], cur = null, shown = false, done = 0;
+
+/* ---------------- storage ---------------- */
+let db;
+const openDB = () => new Promise((res, rej) => {
+  const q = indexedDB.open('buzzer', 1);
+  q.onupgradeneeded = e => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+    if (!d.objectStoreNames.contains('state')) d.createObjectStore('state');
+  };
+  q.onsuccess = e => res(e.target.result);
+  q.onerror = () => rej(q.error);
+});
+const put = (store, k, v) => new Promise((res, rej) => {
+  const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(v, k);
+  t.oncomplete = res; t.onerror = () => rej(t.error);
+});
+const get = (store, k) => new Promise((res, rej) => {
+  const r = db.transaction(store, 'readonly').objectStore(store).get(k);
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+
+/* ---------------- SM-2 ---------------- */
+function schedule(s, ok) {
+  if (!ok) { s.ef = Math.max(1.3, (s.ef || 2.5) - 0.2); s.n = 0; s.iv = 0; s.lapse = (s.lapse || 0) + 1; }
+  else {
+    s.ef = Math.min(2.8, (s.ef || 2.5) + 0.1);
+    s.n = (s.n || 0) + 1;
+    s.iv = s.n === 1 ? 1 : s.n === 2 ? 4 : Math.round((s.iv || 1) * s.ef);
+  }
+  s.due = Date.now() + (ok ? s.iv * DAY : 0);
+  s.seen = (s.seen || 0) + 1;
+  s.right = (s.right || 0) + (ok ? 1 : 0);
+  return s;
+}
+
+/* ---------------- queue ---------------- */
+function topicScore() {
+  const agg = {};
+  for (const [k, s] of ST) {
+    const c = DECK[k]; if (!c) continue;
+    (agg[c.t] ||= { r: 0, n: 0 }); agg[c.t].n += s.seen; agg[c.t].r += s.right;
+  }
+  const out = {};
+  for (const t in agg) out[t] = agg[t].n >= 6 ? agg[t].r / agg[t].n : null;
+  return out;
+}
+
+function build() {
+  const now = Date.now(), ts = topicScore();
+  const due = [], byTopic = {};
+  DECK.forEach((c, i) => {
+    const s = ST.get(i);
+    if (s) { if (s.due <= now) due.push([i, s.due]); return; }
+    const acc = ts[c.t];
+    const weak = (acc === null || acc === undefined) ? 1.25 : 1 + (1 - acc) * 2.2;
+    (byTopic[c.t] ||= []).push([i, Math.log2(c.f + 1) * weak]);
+  });
+  for (const t in byTopic) byTopic[t].sort((a, b) => b[1] - a[1]);
+
+  // round-robin within each stream so no single topic monopolises the session
+  const drain = topics => {
+    const out = [], lists = topics.map(t => byTopic[t] || []).filter(l => l.length);
+    let n = 0;
+    while (out.length < 500 && lists.some(l => n < l.length)) {
+      for (const l of lists) if (n < l.length) out.push(l[n][0]);
+      n++;
+    }
+    return out;
+  };
+  const all = Object.keys(byTopic);
+  const A = drain(all.filter(t => STAR.has(t)));      // your weak five
+  const B = drain(all.filter(t => !STAR.has(t)));     // the other 25
+
+  // fixed 2:3 quota — emphasis without crowding out breadth
+  const mixed = [];
+  let a = 0, b = 0;
+  while ((a < A.length || b < B.length) && mixed.length < 400) {
+    for (let k = 0; k < 2 && a < A.length; k++) mixed.push(A[a++]);
+    for (let k = 0; k < 3 && b < B.length; k++) mixed.push(B[b++]);
+  }
+
+  due.sort((a, b) => a[1] - b[1]);
+  queue = space(due.map(x => x[0]).concat(mixed));
+}
+
+// keep cards sharing an entity at least 12 slots apart, so you don't get
+// five Venice hooks back to back
+function space(ids) {
+  const out = [], hold = [], recent = [];
+  const far = i => !recent.includes(DECK[i].k);
+  let src = ids.slice();
+  while (src.length || hold.length) {
+    let pick = -1;
+    for (let i = 0; i < hold.length; i++) if (far(hold[i])) { pick = hold.splice(i, 1)[0]; break; }
+    if (pick < 0) {
+      while (src.length) { const c = src.shift(); if (far(c)) { pick = c; break; } hold.push(c); }
+    }
+    if (pick < 0) pick = hold.shift();
+    if (pick === undefined) break;
+    out.push(pick);
+    recent.push(DECK[pick].k);
+    if (recent.length > 12) recent.shift();
+  }
+  return out;
+}
+
+function next() {
+  // a missed card comes back after ~3 intervening cards, repeatedly, until it lands
+  for (let i = 0; i < lapses.length; i++) if (lapses[i].at <= done) return lapses.splice(i, 1)[0].id;
+  if (queue.length) return queue.shift();
+  if (lapses.length) return lapses.sort((a, b) => a.at - b.at).shift().id;
+  return null;
+}
+
+/* ---------------- render ---------------- */
+const $ = id => document.getElementById(id);
+
+function paint() {
+  const id = next();
+  if (id === null || id === undefined) {
+    $('panel').hidden = true; $('acts').hidden = true;
+    $('boot').hidden = false;
+    $('boot').innerHTML = '<b>Queue clear</b><span>Nothing is due. New cards unlock as scheduled reviews come back around.</span>';
+    return;
+  }
+  cur = id; shown = false;
+  const c = DECK[id], s = ST.get(id);
+  $('boot').hidden = true; $('panel').hidden = false; $('acts').hidden = false;
+  $('cat').textContent = c.cat;
+  $('rt').textContent = (s ? (s.lapse ? 'missed ' + s.lapse + '\u00d7' : 'review') : 'new') + ' \u00b7 ' + c.y;
+  $('clue').textContent = c.c;
+  $('resp').hidden = true; $('hint').hidden = false; $('warn').hidden = true;
+  $('acts').innerHTML = '<button class="reveal" id="bReveal">Show response</button>';
+  $('bReveal').onclick = reveal;
+  $('mtr').style.width = Math.min(100, done / 30 * 100) + '%';
+}
+
+function reveal() {
+  if (shown) return; shown = true;
+  const c = DECK[cur];
+  $('ans').textContent = c.e;
+  $('hint').hidden = true; $('resp').hidden = false;
+  if (c.x && c.x.length) {
+    $('warn').hidden = false;
+    $('warn').textContent = 'Easily confused with ' + c.x.map(t => t.replace(/\b\w/g, m => m.toUpperCase())).join(' and ') + '. Check what in the clue rules them out.';
+  }
+  $('acts').innerHTML = '<button class="missed" id="bNo">Missed it</button><button class="got" id="bYes">Got it</button>';
+  $('bNo').onclick = () => grade(false);
+  $('bYes').onclick = () => grade(true);
+}
+
+async function grade(ok) {
+  const s = schedule(ST.get(cur) || {}, ok);
+  ST.set(cur, s); done++;
+  if (!ok) lapses.push({ id: cur, at: done + 3 });
+  await put('state', String(cur), s);
+  paint();
+}
+
+document.addEventListener('keydown', e => {
+  if (!$('vDrill').classList.contains('on')) return;
+  if (e.key === ' ') { e.preventDefault(); shown ? grade(true) : reveal(); }
+  else if (shown && (e.key === '1' || e.key === 'j')) grade(false);
+  else if (shown && (e.key === '2' || e.key === 'k')) grade(true);
+});
+$('panel').onclick = () => { if (!shown) reveal(); };
+
+/* ---------------- stats ---------------- */
+function stats() {
+  const now = Date.now();
+  let seen = 0, known = 0, due = 0, r = 0, n = 0;
+  const per = {};
+  DECK.forEach((c, i) => { (per[c.t] ||= { tot: 0, seen: 0, known: 0 }).tot++; });
+  for (const [k, s] of ST) {
+    const c = DECK[k]; if (!c) continue;
+    seen++; per[c.t].seen++; r += s.right; n += s.seen;
+    if (s.due <= now) due++;
+    if (s.right > 0 && s.n > 0) { known++; per[c.t].known++; }
+  }
+  $('sSeen').textContent = seen.toLocaleString();
+  $('sKnown').textContent = known.toLocaleString();
+  $('sDue').textContent = due.toLocaleString();
+  $('sAcc').textContent = n ? Math.round(r / n * 100) + '%' : '\u2014';
+
+  const rows = Object.entries(per).sort((a, b) => {
+    const ka = a[1].seen ? a[1].known / a[1].seen : 2, kb = b[1].seen ? b[1].known / b[1].seen : 2;
+    return ka - kb;
+  });
+  $('topics').innerHTML = rows.map(([t, v]) => {
+    const kp = v.known / v.tot * 100, mp = (v.seen - v.known) / v.tot * 100;
+    return `<div class="trow"><div class="nm">${t}${STAR.has(t) ? '<em>\u2605</em>' : ''}</div>
+      <div class="pc">${v.known.toLocaleString()} / ${v.tot.toLocaleString()}</div>
+      <div class="bar"><i style="width:${kp}%"></i><u style="width:${mp}%"></u></div></div>`;
+  }).join('');
+}
+
+/* ---------------- tabs + boot ---------------- */
+function tab(which) {
+  const d = which === 'drill';
+  $('vDrill').classList.toggle('on', d); $('vStats').classList.toggle('on', !d);
+  $('tDrill').setAttribute('aria-current', d); $('tStats').setAttribute('aria-current', !d);
+  if (!d) stats();
+}
+$('tDrill').onclick = () => tab('drill');
+$('tStats').onclick = () => tab('stats');
+$('bReset').onclick = async () => {
+  if (!confirm('Erase every card\u2019s progress on this device? This cannot be undone.')) return;
+  await new Promise(r => { const t = db.transaction('state', 'readwrite'); t.objectStore('state').clear(); t.oncomplete = r; });
+  ST.clear(); lapses = []; done = 0; build(); paint(); stats();
+};
+
+(async function boot() {
+  try {
+    db = await openDB();
+    let cached = await get('kv', 'deck');
+    if (!cached) {
+      $('bootMsg').textContent = 'Downloading 10 MB of clues. One time only.';
+      const res = await fetch('cards.json');
+      if (!res.ok) throw new Error('cards.json returned ' + res.status);
+      cached = (await res.json()).cards;
+      await put('kv', 'deck', cached);
+    }
+    DECK = cached;
+    $('bootMsg').textContent = 'Restoring your progress…';
+    await new Promise((res, rej) => {
+      const st = db.transaction('state', 'readonly').objectStore('state');
+      const cr = st.openCursor();
+      cr.onsuccess = e => { const c = e.target.result; if (c) { ST.set(+c.key, c.value); c.continue(); } else res(); };
+      cr.onerror = () => rej(cr.error);
+    });
+    build(); paint();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  } catch (err) {
+    $('boot').innerHTML = '<b>Couldn\u2019t load the deck</b><span>' + err.message +
+      '<br><br>cards.json has to sit next to index.html, and the page must be served over http(s) \u2014 opening the file directly won\u2019t work.</span>';
+  }
+})();
+</script>
+</body>
+</html>
